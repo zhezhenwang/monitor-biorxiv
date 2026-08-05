@@ -1,0 +1,4 @@
+interface:
+  display_name: "Monitor bioRxiv"
+  short_description: "Search and track bioRxiv preprints."
+  default_prompt: "Use $monitor-biorxiv to find today's new preprints for my research topics."
