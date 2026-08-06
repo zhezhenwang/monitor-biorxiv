@@ -84,7 +84,7 @@ Keep a short saved query list, for example: disease/phenotype, method, organism,
 
 ## Daily notifications
 
-After the first-use scan, always ask whether the user wants a daily **Codex task notification**. Do not create the automation merely because it was mentioned. State the schedule, timezone, query profile, and whether the digest contains only new items before creating it. When the user answers yes and confirms those details, create the recurring Codex-task automation using the platform's automation facility, then confirm the active schedule.
+After the first-use scan, always ask whether the user wants a daily **Codex task notification**. Do not create the automation merely because it was mentioned. State the schedule, timezone, and query profile before creating it. A daily digest must search papers first posted on the **previous calendar day** in the configured timezone (for example, an August 6 run covers August 5), not the period since the last run. Use the exact inclusive start and end date, include all new matches subject to the overflow rule, and do not use a seen-state file to suppress that previous-day list. When the user answers yes and confirms those details, create the recurring Codex-task automation using the platform's automation facility, then confirm the active schedule.
 
 ## Computational-biology classification
 
