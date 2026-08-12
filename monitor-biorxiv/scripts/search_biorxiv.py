@@ -11,14 +11,24 @@ from urllib.request import urlopen
 
 
 API = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
+BIONATIVE_API = "https://api.biorxiv.org/details/biorxiv"
 COMPUTATIONAL_SIGNALS = (
     "bioinformatics", "computational biology", "computational method", "in silico",
     "machine learning", "deep learning", "artificial intelligence", "algorithm",
     "software tool", "software package", "web server", "database resource",
+    "pipeline", "workflow", "retrieval", "indexing", "orthogroup", "synteny",
+    "phylogenetic", "genome duplication", "spatial omics", "spatial transcriptomics",
 )
 TITLE_COMPUTATIONAL_SIGNALS = (
     "machine learning", "deep learning", "computational", "algorithm", "simulation",
     "inference", "bioinformatic", "in silico", "software", "database", "pipeline",
+    "workflow", "retrieval", "indexing", "orthogroup", "synteny", "genome duplication",
+    "graph pca", "graph integration", "phylogenetic tree", "genome-scale",
+)
+METHOD_TITLE_SIGNALS = (
+    "algorithm", "pipeline", "workflow", "tool", "software", "retrieval", "indexing",
+    "orthogroup", "synteny", "genome duplication", "graph pca", "graph integration",
+    "phylogenetic tree", "data structure", "compression", "scalable", "fast ",
 )
 
 
@@ -71,6 +81,27 @@ def fetch(query, maximum=None):
         raise RuntimeError(f"Europe PMC request failed: {error}") from error
 
 
+def fetch_native_biorxiv(start, end, maximum=None):
+    """Retrieve all versions from bioRxiv's native daily feed."""
+    records = []
+    cursor = 0
+    try:
+        while True:
+            with urlopen(f"{BIONATIVE_API}/{start}/{end}/{cursor}", timeout=30) as response:
+                payload = json.load(response)
+            page = payload.get("collection", [])
+            records.extend(page)
+            if maximum is not None and len(records) >= maximum:
+                return records[:maximum]
+            messages = payload.get("messages", [])
+            total = int(messages[0].get("total", 0)) if messages else 0
+            cursor += len(page)
+            if not page or cursor >= total:
+                return records
+    except Exception as error:
+        raise RuntimeError(f"bioRxiv API request failed: {error}") from error
+
+
 def paper_key(record):
     return record.get("doi") or record.get("pmid") or record.get("id")
 
@@ -94,6 +125,34 @@ def as_paper(record):
     }
 
 
+def as_native_paper(record):
+    doi = record.get("doi", "")
+    return {
+        "key": doi,
+        "title": " ".join(record.get("title", "Untitled").split()),
+        "authors": record.get("authors", "Authors unavailable"),
+        "date": record.get("date", "Date unavailable"),
+        "doi": doi,
+        "url": f"https://www.biorxiv.org/content/{doi}" if doi else "",
+        "abstract": " ".join(record.get("abstract", "").split()),
+    }
+
+
+def matches_filters(paper, args):
+    title = paper["title"].lower()
+    abstract = paper["abstract"].lower()
+    haystack = f"{title} {abstract}"
+    keyword_matches = [term.lower() in haystack for term in args.keyword]
+    if args.keyword and not (any(keyword_matches) if args.any_keyword else all(keyword_matches)):
+        return False
+    author = paper["authors"].lower()
+    if any(term.lower() not in author for term in args.author):
+        return False
+    if any(term.lower() not in title for term in args.title):
+        return False
+    return True
+
+
 def is_computational_biology(paper):
     title = paper["title"].lower()
     abstract = paper["abstract"].lower()
@@ -107,13 +166,23 @@ def is_computational_biology(paper):
     return any(signal in abstract for signal in COMPUTATIONAL_SIGNALS)
 
 
+def method_score(paper):
+    title = paper["title"].lower()
+    abstract = paper["abstract"].lower()
+    score = 3 * sum(signal in title for signal in METHOD_TITLE_SIGNALS)
+    score += sum(signal in abstract for signal in COMPUTATIONAL_SIGNALS)
+    if any(signal in title for signal in ("clinical utility", "prediction of", "predicting ")):
+        score -= 2
+    return score
+
+
 def report_set(papers):
     """Apply the user-facing overflow rule while retaining total-category counts."""
     computational = [paper for paper in papers if is_computational_biology(paper)]
     other_count = len(papers) - len(computational)
     if len(papers) <= 15:
         return papers, len(computational), other_count, 0
-    selected = sorted(computational, key=lambda paper: paper["date"], reverse=True)[:15]
+    selected = sorted(computational, key=lambda paper: (method_score(paper), paper["date"]), reverse=True)[:15]
     return selected, len(computational), other_count, len(computational) - len(selected)
 
 
@@ -139,13 +208,14 @@ def main():
     parser.add_argument("--state", type=Path, help="JSON file storing already-reported records")
     parser.add_argument("--all", action="store_true", help="Include records already in the state file")
     parser.add_argument("--all-biorxiv", action="store_true", help="Browse all recent bioRxiv records without a text filter")
+    parser.add_argument("--native-biorxiv", action="store_true", help="Use bioRxiv's native daily feed; ideal for complete daily digests")
     parser.add_argument("--json", action="store_true", help="Print JSON instead of Markdown")
     args = parser.parse_args()
     if args.days < 1 or (args.max is not None and args.max < 1):
         parser.error("--days and --max must be positive")
     if bool(args.start_date) != bool(args.end_date):
         parser.error("Use --start-date and --end-date together")
-    if not (args.keyword or args.author or args.title or args.all_biorxiv):
+    if not (args.keyword or args.author or args.title or args.all_biorxiv or args.native_biorxiv):
         parser.error("Specify a filter or use --all-biorxiv")
 
     if args.start_date:
@@ -155,8 +225,13 @@ def main():
     else:
         end = dt.date.today()
         start = end - dt.timedelta(days=args.days - 1)
-    query = make_query(args, start, end)
-    records = [as_paper(record) for record in fetch(query, args.max)]
+    query = "bioRxiv native daily feed" if args.native_biorxiv else make_query(args, start, end)
+    if args.native_biorxiv:
+        records = [as_native_paper(record) for record in fetch_native_biorxiv(start, end, args.max)
+                   if record.get("version") == "1"]
+        records = [paper for paper in records if matches_filters(paper, args)]
+    else:
+        records = [as_paper(record) for record in fetch(query, args.max)]
     seen = load_seen(args.state)
     papers = records if args.all else [paper for paper in records if paper["key"] not in seen]
     displayed, computational_count, other_count, hidden_computational_count = report_set(papers)
