@@ -23,7 +23,7 @@ On the first invocation in a task, run an unfiltered bioRxiv scan for papers fir
 2. “Use the default method/algorithm-centered filter, or an unfiltered feed? You can add keywords, authors, or titles. bioRxiv is the default source; arXiv is an optional source.”
 3. “Should I keep these preferences only in this task, or document selected keywords/exclusions in `SKILL.md` for future uses?”
 
-Do not wait for answers before returning the first daily scan. If the user does not specify a filter, use the default method/algorithm-centered filter: algorithms, data structures, compression, graphs/trees, set systems, combinatorics, and method/tool development. Use an unfiltered bioRxiv feed only when the user explicitly asks for it. If the user asks to document preferences in `SKILL.md`, summarize the exact additions and update it only after direct confirmation; explain that project-skill changes affect future uses of this skill.
+Do not wait for answers before returning the first daily scan. If the user does not specify a filter, use the default method/algorithm-centered filter: algorithms, data structures, compression, graph/tree methods, set systems, combinatorics, scalable bioinformatics tools, pipelines/workflows, genomic indexing/retrieval, synteny/orthogroup methods, and spatial-omics methods. Use an unfiltered bioRxiv feed only when the user explicitly asks for it. If the user asks to document preferences in `SKILL.md`, summarize the exact additions and update it only after direct confirmation; explain that project-skill changes affect future uses of this skill.
 
 ## Collect papers
 
@@ -34,9 +34,10 @@ python3 scripts/search_biorxiv.py --keyword "single-cell" --keyword "spatial tra
 python3 scripts/search_biorxiv.py --author "Jane Doe" --days 30
 python3 scripts/search_biorxiv.py --title "immune atlas" --days 365
 python3 scripts/search_biorxiv.py --any-keyword --keyword compression --keyword "data structure" --keyword graph --keyword tree --keyword combinatorics --days 7
+python3 scripts/search_biorxiv.py --native-biorxiv --start-date 2026-08-11 --end-date 2026-08-11
 ```
 
-- Use `--days 1` for a daily scan and `--days 7` for a weekly scan. Use `--all-biorxiv` only for a broad, non-topic-ranked sample of recent biology preprints.
+- Use `--native-biorxiv` for daily digests: it reads bioRxiv's native feed and avoids third-party indexing delays. It retrieves the complete first-posted daily list before applying the method/tool ranking. Use Europe PMC for keyword, author, or title searches outside the daily feed. Use `--all-biorxiv` only for a broad, non-topic-ranked sample of recent biology preprints.
 - Use `--state PATH` on repeat runs. It omits papers already reported and updates the state only after a successful search.
 - Use `--all` to include already-seen papers, `--max N` to cap output, and `--json` for machine-readable output.
 - Do not treat a failed request or an empty result as evidence that no papers exist; say which occurred.
@@ -57,7 +58,7 @@ For more than 15 bioRxiv results, apply the computational-biology overflow rule 
 
 When the user specifies a timeframe, list **every** matching bioRxiv paper first posted in that period. Do not silently select a top five or a representative sample. Include the post date beside every title, state the total count and the exact inclusive date range, and say plainly if the count is zero. Use `FIRST_PDATE`/first-posted date rather than a later indexing or revision date.
 
-**bioRxiv overflow rule:** If a bioRxiv search returns more than 15 papers, show up to 15 papers related to computational biology, sorted newest first by first-posted date. Report the total result count, the number classified as computational biology, the number in other biology categories, and the number of computational-biology papers not shown. Call it a metadata-based classification, not a definitive bioRxiv subject category. If fewer than 15 papers meet that classification, show all of them and report the shortfall; do not fill the list with unrelated papers unless the user asks.
+**bioRxiv overflow rule:** If a bioRxiv search returns more than 15 papers, show up to 15 computational-method/tool papers, with central algorithmic or scalable software contributions ranked ahead of generic model use and sorted by first-posted date to break ties. Give priority to data structures, compression, graph/tree algorithms, genomic indexing or retrieval, synteny/orthogroup analysis, genome reconstruction, spatial-omics methods, and reusable pipelines. Report the total result count, the number classified as computational biology, the number in other biology categories, and the number of computational-biology papers not shown. Call it a metadata-based classification, not a definitive bioRxiv subject category. If fewer than 15 papers meet that classification, show all of them and report the shortfall; do not fill the list with unrelated papers unless the user asks.
 
 ## Adapt to preferences
 
@@ -84,11 +85,11 @@ Keep a short saved query list, for example: disease/phenotype, method, organism,
 
 ## Daily notifications
 
-After the first-use scan, always ask whether the user wants a daily **Codex task notification**. Do not create the automation merely because it was mentioned. State the schedule, timezone, and query profile before creating it. A daily digest must search papers first posted on the **previous calendar day** in the configured timezone (for example, an August 6 run covers August 5), not the period since the last run. Use the exact inclusive start and end date, include all new matches subject to the overflow rule, and do not use a seen-state file to suppress that previous-day list. When the user answers yes and confirms those details, create the recurring Codex-task automation using the platform's automation facility, then confirm the active schedule.
+After the first-use scan, always ask whether the user wants a daily **Codex task notification**. Do not create the automation merely because it was mentioned. State the schedule, timezone, and query profile before creating it. A daily digest must search papers first posted on the **previous calendar day** in the configured timezone (for example, an August 6 run covers August 5), not the period since the last run. Use `--native-biorxiv` with the exact inclusive start and end date: do not use a third-party metadata index for the daily scan, because it can lag and omit new papers. Include all new matches subject to the overflow rule, and do not use a seen-state file to suppress that previous-day list. When the user answers yes and confirms those details, create the recurring Codex-task automation using the platform's automation facility, then confirm the active schedule.
 
 ## Computational-biology classification
 
-Treat this as a **metadata-based estimate**, not an official bioRxiv category and never as a claim that every computational-biology paper was found. Mark a paper as computational biology only when its title or abstract indicates that computation is a central contribution, such as bioinformatics, machine/deep learning, algorithm development, in-silico prediction, simulation, software, a database/resource, or a computational method/model.
+Treat this as a **metadata-based estimate**, not an official bioRxiv category and never as a claim that every computational-biology paper was found. Mark a paper as computational biology only when its title or abstract indicates that computation is a central contribution, such as bioinformatics, algorithm development, scalable software, a reusable pipeline, retrieval/indexing, synteny/orthogroup analysis, genome reconstruction, spatial-omics methods, a database/resource, or a computational method/model.
 
 Do not classify a paper solely because it uses or mentions transcriptomics, sequencing, proteomics, single-cell data, spatial data, multi-omics, generic statistical analysis, a one-off computational model, or a prediction of a biological/clinical outcome. Those techniques often support primarily experimental work. Exclude papers where computation is an auxiliary validation tool rather than the principal method or output. When an official bioRxiv subject category is available, report it separately and prefer it over a text heuristic. If the user needs an exhaustive subject-category feed, say that the metadata source and category definition must be agreed first.
 
