@@ -87,6 +87,15 @@ Keep a short saved query list, for example: disease/phenotype, method, organism,
 
 After the first-use scan, always ask whether the user wants a daily **Codex task notification**. Do not create the automation merely because it was mentioned. State the schedule, timezone, and query profile before creating it. A daily digest must search papers first posted on the **previous calendar day** in the configured timezone (for example, an August 6 run covers August 5), not the period since the last run. Use `--native-biorxiv` with the exact inclusive start and end date: do not use a third-party metadata index for the daily scan, because it can lag and omit new papers. Include all new matches subject to the overflow rule, and do not use a seen-state file to suppress that previous-day list. When the user answers yes and confirms those details, create the recurring Codex-task automation using the platform's automation facility, then confirm the active schedule.
 
+### Native-feed failure fallback
+
+Treat an empty, invalid, or non-JSON native API response as a **source failure**, even when its HTTP status is `200 OK`; never interpret it as a zero-paper day. In that case:
+
+1. Use bioRxiv's daily listings in the browser as the first-party fallback and wait briefly for any automatic security verification to clear.
+2. If the browser presents an interactive CAPTCHA, do not bypass it. Tell the user that manual verification is required and do not report “no papers.”
+3. If the website becomes available, collect and rank the requested day's papers from it, and state that the website fallback was used.
+4. If neither path is available, report the retrieval failure plainly; do not substitute another source unless the user explicitly authorizes one.
+
 ## Computational-biology classification
 
 Treat this as a **metadata-based estimate**, not an official bioRxiv category and never as a claim that every computational-biology paper was found. Mark a paper as computational biology only when its title or abstract indicates that computation is a central contribution, such as bioinformatics, algorithm development, scalable software, a reusable pipeline, retrieval/indexing, synteny/orthogroup analysis, genome reconstruction, spatial-omics methods, a database/resource, or a computational method/model.
