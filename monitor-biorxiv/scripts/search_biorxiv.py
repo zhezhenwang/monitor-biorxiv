@@ -4,6 +4,7 @@
 import argparse
 import datetime as dt
 import json
+import re
 import sys
 from pathlib import Path
 from urllib.parse import urlencode
@@ -18,17 +19,31 @@ COMPUTATIONAL_SIGNALS = (
     "software tool", "software package", "web server", "database resource",
     "pipeline", "workflow", "retrieval", "indexing", "orthogroup", "synteny",
     "phylogenetic", "genome duplication", "spatial omics", "spatial transcriptomics",
+    "feature selection", "highly variable gene", "gene selection", "data harmonization",
+    "analytical database", "embedded database", "reference database", "reference resource",
+    "regenerable", "benchmarking", "preprocessing", "similarity search", "ligand binding",
+    "molecular retrieval", "graph vae",
 )
 TITLE_COMPUTATIONAL_SIGNALS = (
     "machine learning", "deep learning", "computational", "algorithm", "simulation",
     "inference", "bioinformatic", "in silico", "software", "database", "pipeline",
     "workflow", "retrieval", "indexing", "orthogroup", "synteny", "genome duplication",
     "graph pca", "graph integration", "phylogenetic tree", "genome-scale",
+    "feature selection", "highly variable gene", "gene selection", "data harmonization",
+    "analytical database", "embedded analytical", "reference database", "regenerable",
+    "similarity search", "ligand binding-site", "graph vae", "scalable",
 )
 METHOD_TITLE_SIGNALS = (
     "algorithm", "pipeline", "workflow", "tool", "software", "retrieval", "indexing",
     "orthogroup", "synteny", "genome duplication", "graph pca", "graph integration",
     "phylogenetic tree", "data structure", "compression", "scalable", "fast ",
+    "feature selection", "highly variable gene", "data harmonization", "analytical database",
+    "reference database", "regenerable", "similarity search", "ligand binding-site", "graph vae",
+)
+NAMED_METHOD_TERMS = (
+    "algorithm", "method", "tool", "software", "pipeline", "workflow", "database",
+    "reference", "retrieval", "search", "scalable", "selection", "harmonization",
+    "benchmark", "graph", "latent space",
 )
 
 
@@ -158,6 +173,8 @@ def is_computational_biology(paper):
     abstract = paper["abstract"].lower()
     if any(signal in title for signal in TITLE_COMPUTATIONAL_SIGNALS):
         return True
+    if re.match(r"^[a-z][a-z0-9_-]{2,}:\\s", title) and any(term in title or term in abstract for term in NAMED_METHOD_TERMS):
+        return True
     if "prediction" in title and "open-source" in title:
         return True
     if "model" in title and any(cue in title for cue in ("sequence-to-function", "mathematical", "statistical", "computational")):
@@ -171,6 +188,8 @@ def method_score(paper):
     abstract = paper["abstract"].lower()
     score = 3 * sum(signal in title for signal in METHOD_TITLE_SIGNALS)
     score += sum(signal in abstract for signal in COMPUTATIONAL_SIGNALS)
+    if re.match(r"^[a-z][a-z0-9_-]{2,}:\\s", title) and any(term in title or term in abstract for term in NAMED_METHOD_TERMS):
+        score += 2
     if any(signal in title for signal in ("clinical utility", "prediction of", "predicting ")):
         score -= 2
     return score
