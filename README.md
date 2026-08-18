@@ -16,6 +16,8 @@ Named-method titles such as `ToolName: method description` are a positive signal
 
 This default is intentionally tunable. Ask for keyword, author, title, organism, disease, or method filters; request an unfiltered feed; identify unwanted topics; or ask to include another source. bioRxiv remains the default source, and arXiv is searched only when explicitly requested.
 
+For a dated daily digest, the skill first enumerates every paper **first posted as v1** on that exact date; preferences rank that complete set rather than silently restricting the source collection. It reports later versions only for papers you explicitly open or ask to follow, in a separate `Updates to followed papers` section.
+
 ## Install
 
 Copy the `monitor-biorxiv` folder into your local Codex skills directory:
