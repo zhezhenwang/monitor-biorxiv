@@ -37,7 +37,8 @@ python3 scripts/search_biorxiv.py --any-keyword --keyword compression --keyword 
 python3 scripts/search_biorxiv.py --native-biorxiv --start-date 2026-08-11 --end-date 2026-08-11
 ```
 
-- Use `--native-biorxiv` for daily digests: it reads bioRxiv's native feed and avoids third-party indexing delays. It retrieves the complete first-posted daily list before applying the method/tool ranking. Use Europe PMC for keyword, author, or title searches outside the daily feed. Use `--all-biorxiv` only for a broad, non-topic-ranked sample of recent biology preprints.
+- Use `--native-biorxiv` for daily digests: it reads bioRxiv's native feed and avoids third-party indexing delays. It retrieves every v1 first-posted on the requested date before applying the method/tool ranking. Use Europe PMC for keyword, author, or title searches outside the daily feed. Use `--all-biorxiv` only for a broad, non-topic-ranked sample of recent biology preprints.
+- Use `--follow-doi DOI_OR_BIORXIV_URL` with a native daily scan to report a revision posted that day for a paper the user has explicitly opened or asked to follow. Keep these updates separate from the new-v1 digest.
 - Use `--state PATH` on repeat runs. It omits papers already reported and updates the state only after a successful search.
 - Use `--all` to include already-seen papers, `--max N` to cap output, and `--json` for machine-readable output.
 - Do not treat a failed request or an empty result as evidence that no papers exist; say which occurred.
@@ -56,7 +57,7 @@ For more than 15 bioRxiv results, apply the computational-biology overflow rule 
 
 ## Triage and report
 
-When the user specifies a timeframe, list **every** matching bioRxiv paper first posted in that period. Do not silently select a top five or a representative sample. Include the post date beside every title, state the total count and the exact inclusive date range, and say plainly if the count is zero. Use `FIRST_PDATE`/first-posted date rather than a later indexing or revision date.
+When the user specifies a timeframe, enumerate **every v1 bioRxiv paper first posted** in that exact period before applying any ranking. Do not silently select a top five or a representative sample. Include the post date beside every title, state the total v1 count and the exact inclusive date range, and say plainly if the count is zero. Use `FIRST_PDATE`/first-posted date rather than a later indexing or revision date. Do not narrow this source collection with a task-specific interest profile unless the user explicitly asks for topical filtering; use preferences to rank the complete v1 set.
 
 **bioRxiv overflow rule:** If a bioRxiv search returns more than 15 papers, show up to 15 computational-method/infrastructure papers, with central algorithmic or scalable software contributions ranked ahead of generic model use and sorted by first-posted date to break ties. Give priority to data structures, compression, graph/tree algorithms, feature-selection and dimensionality-reduction methods, structural-similarity search and molecular retrieval, genomic indexing or retrieval, synteny/orthogroup analysis, genome reconstruction, spatial-omics methods, scalable data systems, regenerable reference databases, and reusable pipelines. Include harmonization or preprocessing benchmarks only when they deliver a generally useful methodological comparison, and rank them below a new method or reusable system. Report the total result count, the number classified as computational biology, the number in other biology categories, and the number of computational-biology papers not shown. Call it a metadata-based classification, not a definitive bioRxiv subject category. If fewer than 15 papers meet that classification, show all of them and report the shortfall; do not fill the list with unrelated papers unless the user asks.
 
@@ -73,6 +74,8 @@ Treat statements such as “more algorithmic,” “not what I want,” “show 
 
 When clicks are visible in the active task, treat opening a paper link as a **weak positive signal** for its topic, methods, authors, and source. Repeated clicks on similar papers can increase their ranking and add their shared terms to the next search expansion. Do not interpret a single click as endorsement, use it to infer sensitive interests, or treat a lack of clicks as a negative signal. Give explicit feedback more weight than click behavior, and let the user ask to reset or ignore click-based learning at any time.
 
+For papers the user explicitly opens or asks to follow, also check the daily native feed for a newly posted revision. Report it under `Updates to followed papers`, with its version and update date, separate from the exact-date v1 digest. Do not include arbitrary revisions or count an old paper with a new version as newly posted.
+
 Do not infer personal interests from unrelated tasks, external data, or a paper merely because it appeared in a result. Do not persist a preference outside the active task or use it for automation without the user’s authorization. When a preference is ambiguous or would materially widen the source scope, propose the interpretation before making it permanent.
 
 For each paper, retain the title, authors, posted date, DOI/link, and one-sentence relevance note tied to the chat-derived profile. State the filters and date range at the top. Group the complete list into `High relevance`, `Worth a look`, and `Watchlist` only when useful; do not omit lower-priority matches.
@@ -85,13 +88,13 @@ Keep a short saved query list, for example: disease/phenotype, method, organism,
 
 ## Daily notifications
 
-After the first-use scan, always ask whether the user wants a daily **Codex task notification**. Do not create the automation merely because it was mentioned. State the schedule, timezone, and query profile before creating it. A daily digest must search papers first posted on the **previous calendar day** in the configured timezone (for example, an August 6 run covers August 5), not the period since the last run. Use `--native-biorxiv` with the exact inclusive start and end date: do not use a third-party metadata index for the daily scan, because it can lag and omit new papers. Include all new matches subject to the overflow rule, and do not use a seen-state file to suppress that previous-day list. When the user answers yes and confirms those details, create the recurring Codex-task automation using the platform's automation facility, then confirm the active schedule.
+After the first-use scan, always ask whether the user wants a daily **Codex task notification**. Do not create the automation merely because it was mentioned. State the schedule, timezone, and query profile before creating it. A daily digest must search papers first posted on the **previous calendar day** in the configured timezone (for example, an August 6 run covers August 5), not the period since the last run. Use `--native-biorxiv` with the exact inclusive start and end date: do not use a third-party metadata index for the daily scan, because it can lag and omit new papers. Enumerate every v1 paper before applying the overflow rule, and do not use a seen-state file to suppress that previous-day list. Check revisions only for explicitly followed/opened papers and render them separately. When the user answers yes and confirms those details, create the recurring Codex-task automation using the platform's automation facility, then confirm the active schedule.
 
 ### Native-feed failure fallback
 
 Treat an empty, invalid, or non-JSON native API response as a **source failure**, even when its HTTP status is `200 OK`; never interpret it as a zero-paper day. In that case:
 
-1. Use bioRxiv's daily listings in the browser as the first-party fallback and wait briefly for any automatic security verification to clear.
+1. Use bioRxiv's first-party archive in the browser as the fallback, select the exact date, and enumerate every v1 entry before ranking. Do not rely on the rolling `/content/early/recent` page as a historical daily archive. Wait briefly for any automatic security verification to clear.
 2. If the browser presents an interactive CAPTCHA, do not bypass it. Tell the user that manual verification is required and do not report “no papers.”
 3. If the website becomes available, collect and rank the requested day's papers from it, and state that the website fallback was used.
 4. If neither path is available, report the retrieval failure plainly; do not substitute another source unless the user explicitly authorizes one.
