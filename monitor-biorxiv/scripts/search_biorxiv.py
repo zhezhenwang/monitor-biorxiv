@@ -150,7 +150,18 @@ def as_native_paper(record):
         "doi": doi,
         "url": f"https://www.biorxiv.org/content/{doi}" if doi else "",
         "abstract": " ".join(record.get("abstract", "").split()),
+        "version": str(record.get("version", "")),
     }
+
+
+def normalize_doi(value):
+    """Accept a DOI or a bioRxiv content URL for a followed paper."""
+    value = value.strip().lower()
+    for prefix in ("https://www.biorxiv.org/content/", "http://www.biorxiv.org/content/", "https://doi.org/"):
+        if value.startswith(prefix):
+            value = value[len(prefix):]
+    value = value.removesuffix(".full-text").split("?")[0].split("#")[0]
+    return re.sub(r"v\d+$", "", value)
 
 
 def matches_filters(paper, args):
@@ -228,6 +239,7 @@ def main():
     parser.add_argument("--all", action="store_true", help="Include records already in the state file")
     parser.add_argument("--all-biorxiv", action="store_true", help="Browse all recent bioRxiv records without a text filter")
     parser.add_argument("--native-biorxiv", action="store_true", help="Use bioRxiv's native daily feed; ideal for complete daily digests")
+    parser.add_argument("--follow-doi", action="append", default=[], help="On a native daily scan, report a new version of this followed DOI; repeatable")
     parser.add_argument("--json", action="store_true", help="Print JSON instead of Markdown")
     args = parser.parse_args()
     if args.days < 1 or (args.max is not None and args.max < 1):
@@ -245,10 +257,17 @@ def main():
         end = dt.date.today()
         start = end - dt.timedelta(days=args.days - 1)
     query = "bioRxiv native daily feed" if args.native_biorxiv else make_query(args, start, end)
+    followed_updates = []
     if args.native_biorxiv:
-        records = [as_native_paper(record) for record in fetch_native_biorxiv(start, end, args.max)
-                   if record.get("version") == "1"]
-        records = [paper for paper in records if matches_filters(paper, args)]
+        native_records = [as_native_paper(record) for record in fetch_native_biorxiv(start, end, args.max)]
+        # Daily corpus: all papers first posted as v1 on the requested date.
+        # Revisions are never mixed into this new-paper list.
+        records = [paper for paper in native_records if paper["version"] == "1" and matches_filters(paper, args)]
+        followed_dois = {normalize_doi(value) for value in args.follow_doi}
+        followed_updates = [
+            paper for paper in native_records
+            if paper["version"] != "1" and normalize_doi(paper["doi"]) in followed_dois
+        ]
     else:
         records = [as_paper(record) for record in fetch(query, args.max)]
     seen = load_seen(args.state)
@@ -266,6 +285,7 @@ def main():
             "other_biology_count": other_count,
             "hidden_computational_biology_count": hidden_computational_count,
             "papers": displayed,
+            "followed_paper_updates": followed_updates,
         }, indent=2))
         return
     print(f"# bioRxiv results: {start} to {end} ({len(papers)} records)\n")
@@ -281,6 +301,11 @@ def main():
         print(f"{paper['authors']}  \nPosted: {paper['date']}  \n{paper['url']}\n")
         if paper["abstract"]:
             print(f"{paper['abstract'][:500]}{'…' if len(paper['abstract']) > 500 else ''}\n")
+    if followed_updates:
+        print("# Updates to followed papers\n")
+        for paper in followed_updates:
+            print(f"## {paper['title']} (v{paper['version']})\n")
+            print(f"{paper['authors']}  \nUpdated: {paper['date']}  \n{paper['url']}\n")
 
 
 if __name__ == "__main__":
