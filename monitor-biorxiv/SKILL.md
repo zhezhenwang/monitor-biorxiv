@@ -78,7 +78,7 @@ For papers the user explicitly opens or asks to follow, also check the daily nat
 
 Do not infer personal interests from unrelated tasks, external data, or a paper merely because it appeared in a result. Do not persist a preference outside the active task or use it for automation without the user’s authorization. When a preference is ambiguous or would materially widen the source scope, propose the interpretation before making it permanent.
 
-For each paper, retain the title, authors, posted date, DOI/link, and one-sentence relevance note tied to the chat-derived profile. State the filters and date range at the top. Group the complete list into `High relevance`, `Worth a look`, and `Watchlist` only when useful; do not omit lower-priority matches.
+For each paper, retain the title, authors, posted date, DOI/link, and one-sentence relevance note tied to the chat-derived profile. Render **one paper per bullet/list line**, with a blank line between entries; never run multiple papers together in a paragraph or a single long notification line. State the filters and date range at the top. Group the complete list into `High relevance`, `Worth a look`, and `Watchlist` only when useful; do not omit lower-priority matches.
 
 Be explicit that this is a discovery feed, not a systematic review: keyword and metadata indexing can miss synonym-heavy or newly posted work. Suggest adding synonyms, gene/protein aliases, methods, organisms, and author name variants to reduce false negatives.
 
